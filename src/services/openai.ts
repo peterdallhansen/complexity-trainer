@@ -73,6 +73,7 @@ Respond with a JSON object with this exact structure:
 
 RULES for pseudocode formatting:
 - First line is always the function signature like "ALG1(n)"
+- DO NOT use LaTeX inside the pseudocode! Use plain text operators like >=, <=, !=, *, /
 - Use 2-space indentation for nesting
 - Use "for i = 1 to X do" / "end for" syntax
 - Use "while CONDITION do" / "end while" syntax

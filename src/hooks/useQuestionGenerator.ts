@@ -21,6 +21,13 @@ const REFILL_THRESHOLD = 5;
 export function useQuestionGenerator(isEnabled: boolean = false, selectedTypes: string[] = []) {
   const [queue, setQueue] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // Use a ref to track the latest currentIndex to avoid stale closures in async callbacks
+  const currentIndexRef = useRef(currentIndex);
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,11 +48,11 @@ export function useQuestionGenerator(isEnabled: boolean = false, selectedTypes: 
     try {
       const newQuestions = await generateMixedBatch(selectedTypes, count);
       setQueue((prev) => {
+        const latestIndex = currentIndexRef.current;
         // Keep past questions and the current question exactly as they are
-        const past = prev.slice(0, currentIndex + 1);
+        const past = prev.slice(0, latestIndex + 1);
         // Take all upcoming questions and the new ones, then shuffle them together
-        // This ensures a perfectly mixed queue even though we fetch one type at a time
-        const future = [...prev.slice(currentIndex + 1), ...newQuestions];
+        const future = [...prev.slice(latestIndex + 1), ...newQuestions];
         for (let i = future.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [future[i], future[j]] = [future[j], future[i]];
