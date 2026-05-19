@@ -39,9 +39,9 @@ IMPORTANT: Always return valid JSON matching the exact schema requested. Never i
  * Prompt template for generating algorithm complexity questions (Type 1).
  * Includes few-shot examples from actual DTU exam questions.
  */
-const ALGORITHM_PROMPT = `Generate 5 unique algorithm complexity analysis questions. Each question shows ONE pseudocode algorithm, and the student must identify its tightest Big-O running time.
+const getAlgorithmPrompt = (count: number) => `Generate ${count} unique algorithm complexity analysis questions. Each question shows ONE pseudocode algorithm, and the student must identify its tightest Big-O running time.
 
-Use varied algorithm patterns across the 5 questions:
+Use varied algorithm patterns across the ${count} questions:
 - Simple/nested for-loops with polynomial bounds
 - While-loops with doubling (k = 2*k) or halving (k = k/2) — logarithmic patterns
 - Loops bounded by sqrt(n), floor(sqrt(n)), ceiling(log n)
@@ -80,17 +80,23 @@ correctAnswer MUST be exactly one of: "O(1)", "O(\\\\log n)", "O(\\\\sqrt{n})", 
  * Prompt template for generating true/false asymptotic statements (Type 2).
  * Includes examples spanning O, Θ, and Ω notations.
  */
-const TRUE_FALSE_PROMPT = `Generate 5 unique true/false questions about asymptotic notation. Each question is a mathematical statement using O (big-O), Θ (big-Theta), or Ω (big-Omega) notation, and the student must determine if it is correct.
+const getTrueFalsePrompt = (count: number) => `Generate ${count} unique true/false questions about asymptotic notation. Each question is a mathematical statement using O (big-O), Θ (big-Theta), or Ω (big-Omega) notation, and the student must determine if it is correct.
 
 Mix of correct and incorrect statements (aim for roughly 50/50).
 
-Use varied expression patterns:
-- Polynomial expressions: n^3 + 5n^2 + n = Θ(n^3)
-- Logarithmic expressions: log(n^2) + 2·log(n^4) = Θ(log n)
-- Mixed polynomial-log: 32n^5·log^3(n) + 0.1·n + 2n^2·log(n) = O(n^5)
-- Roots and fractional exponents: √n·(n + n^{3/2}) = Θ(n^2)
-- Exponential expressions: (1.5)^n + 4^{log n} = Ω(n^8)
-- Expressions with n/log(n) terms: 3·log(n) + n/log(n) + 2n = Ω(n/log n)
+Use varied expression patterns (DO NOT reuse these exact examples, invent your own!):
+- Polynomial expressions: e.g., 7n^4 + 2n^3 = Θ(n^4)
+- Logarithmic expressions: e.g., 3\\log(n^5) = Θ(\\log n)
+- Mixed polynomial-log: e.g., n^2\\log n + n^3 = O(n^3)
+- Roots and fractional exponents: e.g., \\sqrt{n} + n^{2/3} = Θ(n^{2/3})
+- Exponential expressions: e.g., 3^n + 2^{n+1} = Θ(3^n)
+- Expressions with n/log(n) terms: e.g., n/\\log n + \\sqrt{n} = Ω(\\sqrt{n})
+
+IMPORTANT RANDOMIZATION RULES:
+- NEVER use the exact expressions from the examples above.
+- Randomize the coefficients (e.g., use 3, 7, 14, 0.5 instead of just 1 or 2).
+- Randomize the exponents (e.g., n^4, n^7, n^{3/2}).
+- Make sure every question is completely unique across batches.
 
 The LaTeX should be well-formatted and use standard notation:
 - Use \\log for logarithms
@@ -134,14 +140,14 @@ const algorithmQuestionSchema = z.object({
   parameter: z.string(),
   pseudocode: z.array(z.string()),
   correctAnswer: z.enum(COMPLEXITY_OPTIONS),
-  explanation: z.string(),
+  explanation: z.string().describe("Detailed mathematical explanation. MUST DOUBLE ESCAPE BACKSLASHES for any latex (e.g., \\\\Theta, \\\\log)."),
 });
 
 const trueFalseQuestionSchema = z.object({
   type: z.literal("trueFalse"),
-  latex: z.string(),
+  latex: z.string().describe("The mathematical statement IN LATEX. YOU MUST DOUBLE ESCAPE BACKSLASHES (e.g., \\\\frac, \\\\log, \\\\sqrt, \\\\Theta)."),
   isCorrect: z.boolean(),
-  explanation: z.string(),
+  explanation: z.string().describe("Detailed mathematical explanation. MUST DOUBLE ESCAPE BACKSLASHES for any latex (e.g., \\\\frac, \\\\Theta)."),
 });
 
 const algorithmBatchSchema = z.object({
@@ -152,12 +158,12 @@ const trueFalseBatchSchema = z.object({
   questions: z.array(trueFalseQuestionSchema),
 });
 
-export async function generateAlgorithmQuestions(): Promise<AlgorithmQuestion[]> {
+export async function generateAlgorithmQuestions(count: number = 5): Promise<AlgorithmQuestion[]> {
   const structuredLlm = llm.withStructuredOutput(algorithmBatchSchema);
   
   const result = await structuredLlm.invoke([
     new SystemMessage(SYSTEM_PROMPT),
-    new HumanMessage(ALGORITHM_PROMPT),
+    new HumanMessage(getAlgorithmPrompt(count)),
   ]);
 
   return result.questions.map((q) => ({
@@ -166,12 +172,12 @@ export async function generateAlgorithmQuestions(): Promise<AlgorithmQuestion[]>
   }));
 }
 
-export async function generateTrueFalseQuestions(): Promise<TrueFalseQuestion[]> {
+export async function generateTrueFalseQuestions(count: number = 5): Promise<TrueFalseQuestion[]> {
   const structuredLlm = llm.withStructuredOutput(trueFalseBatchSchema);
   
   const result = await structuredLlm.invoke([
     new SystemMessage(SYSTEM_PROMPT),
-    new HumanMessage(TRUE_FALSE_PROMPT),
+    new HumanMessage(getTrueFalsePrompt(count)),
   ]);
 
   return result.questions.map((q) => ({
@@ -186,18 +192,24 @@ export async function generateTrueFalseQuestions(): Promise<TrueFalseQuestion[]>
  *
  * @returns Array of ~10 mixed Question objects
  */
-export async function generateMixedBatch(): Promise<Question[]> {
-  const [algorithmQuestions, trueFalseQuestions] = await Promise.all([
-    generateAlgorithmQuestions(),
-    generateTrueFalseQuestions(),
-  ]);
+export async function generateMixedBatch(selectedTypes: string[], count: number = 5): Promise<Question[]> {
+  if (selectedTypes.length === 0) return [];
 
-  // Combine and shuffle using Fisher-Yates
-  const combined: Question[] = [...algorithmQuestions, ...trueFalseQuestions];
-  for (let i = combined.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [combined[i], combined[j]] = [combined[j], combined[i]];
+  // Pick a random type from the selection
+  const typeToGenerate = selectedTypes[Math.floor(Math.random() * selectedTypes.length)];
+
+  let newQuestions: Question[] = [];
+  if (typeToGenerate === "algorithm") {
+    newQuestions = await generateAlgorithmQuestions(count);
+  } else if (typeToGenerate === "trueFalse") {
+    newQuestions = await generateTrueFalseQuestions(count);
   }
 
-  return combined;
+  // Shuffle within the batch just in case
+  for (let i = newQuestions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newQuestions[i], newQuestions[j]] = [newQuestions[j], newQuestions[i]];
+  }
+
+  return newQuestions;
 }

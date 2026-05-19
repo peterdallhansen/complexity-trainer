@@ -11,6 +11,7 @@ import Header from "./components/Header/Header";
 import AlgorithmQuestion from "./components/AlgorithmQuestion/AlgorithmQuestion";
 import TrueFalseQuestion from "./components/TrueFalseQuestion/TrueFalseQuestion";
 import LoadingSpinner from "./components/LoadingSpinner/LoadingSpinner";
+import SetupScreen from "./components/SetupScreen/SetupScreen";
 import { useQuestionGenerator } from "./hooks/useQuestionGenerator";
 import { useScore } from "./hooks/useScore";
 import "./App.css";
@@ -20,11 +21,19 @@ import "./App.css";
  * Manages the state machine: loading → question → answered → next question.
  */
 function App() {
+  const [isStarted, setIsStarted] = useState(false);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+
   const { currentQuestion, isLoading, error, nextQuestion, retry, queueSize } =
-    useQuestionGenerator();
+    useQuestionGenerator(isStarted, selectedTypes);
   const { score, recordAnswer } = useScore();
   const [isAnswered, setIsAnswered] = useState(false);
   const [questionIndex, setQuestionIndex] = useState(0);
+
+  const handleStartSession = useCallback((types: string[]) => {
+    setSelectedTypes(types);
+    setIsStarted(true);
+  }, []);
 
   /**
    * Handle answer submission from either question type.
@@ -66,7 +75,11 @@ function App() {
       <Header score={score} queueSize={queueSize} />
 
       <main className="main-content">
-        {/* Loading state */}
+        {!isStarted ? (
+          <SetupScreen onStart={handleStartSession} />
+        ) : (
+          <>
+            {/* Loading state */}
         {isLoading && !error && <LoadingSpinner />}
 
         {/* Error state */}
@@ -117,6 +130,8 @@ function App() {
               </button>
             )}
           </div>
+        )}
+          </>
         )}
       </main>
 

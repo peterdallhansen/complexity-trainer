@@ -18,7 +18,7 @@ const REFILL_THRESHOLD = 5;
  *
  * @returns Current question, loading state, error state, and navigation controls.
  */
-export function useQuestionGenerator() {
+export function useQuestionGenerator(isEnabled: boolean = false, selectedTypes: string[] = []) {
   const [queue, setQueue] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,13 +34,24 @@ export function useQuestionGenerator() {
    * Fetch a new batch of questions from the LLM and append to the queue.
    * Uses a ref guard to prevent concurrent refill requests.
    */
-  const refillQueue = useCallback(async () => {
-    if (isRefilling.current) return;
+  const refillQueue = useCallback(async (count: number = 5) => {
+    if (isRefilling.current || !isEnabled || selectedTypes.length === 0) return;
     isRefilling.current = true;
 
     try {
-      const newQuestions = await generateMixedBatch();
-      setQueue((prev) => [...prev, ...newQuestions]);
+      const newQuestions = await generateMixedBatch(selectedTypes, count);
+      setQueue((prev) => {
+        // Keep past questions and the current question exactly as they are
+        const past = prev.slice(0, currentIndex + 1);
+        // Take all upcoming questions and the new ones, then shuffle them together
+        // This ensures a perfectly mixed queue even though we fetch one type at a time
+        const future = [...prev.slice(currentIndex + 1), ...newQuestions];
+        for (let i = future.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [future[i], future[j]] = [future[j], future[i]];
+        }
+        return [...past, ...future];
+      });
       setError(null);
     } catch (err) {
       const message =
@@ -51,15 +62,15 @@ export function useQuestionGenerator() {
       isRefilling.current = false;
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedTypes]);
 
-  /** Initial load: fetch the first batch of questions on mount. */
+  /** Initial load: fetch the first batch of questions when enabled. */
   useEffect(() => {
-    if (!initialLoadDone.current) {
+    if (isEnabled && !initialLoadDone.current && (selectedTypes?.length || 0) > 0) {
       initialLoadDone.current = true;
-      refillQueue();
+      refillQueue(1);
     }
-  }, [refillQueue]);
+  }, [isEnabled, selectedTypes?.length, refillQueue]);
 
   /**
    * Auto-refill: when remaining questions in the queue drops below threshold,
