@@ -33,6 +33,12 @@ Your questions must be:
 - Varied in the patterns they test (loops, nested loops, while-doubling, recursion, Master Theorem, etc.)
 - Using proper pseudocode conventions (for, while, if/else, return, floor/ceiling notation)
 
+CRITICAL MATH FORMATTING RULES FOR EXPLANATIONS:
+- EVERY single mathematical variable, expression, fraction, or equation MUST be wrapped in single dollar signs ($...$).
+- DO NOT leave any math unformatted.
+- Correct: "We compare $f(n) = n^2$ with $g(n) = \\frac{n}{2}$."
+- Incorrect: "We compare f(n) = n^2 with g(n) = n/2."
+
 IMPORTANT: Always return valid JSON matching the exact schema requested. Never include markdown formatting or code fences in your response.`;
 
 /**
@@ -140,14 +146,14 @@ const algorithmQuestionSchema = z.object({
   parameter: z.string(),
   pseudocode: z.array(z.string()),
   correctAnswer: z.enum(COMPLEXITY_OPTIONS),
-  explanation: z.string().describe("Detailed mathematical explanation. MUST DOUBLE ESCAPE BACKSLASHES for any latex (e.g., \\\\Theta, \\\\log)."),
+  explanation: z.string().describe("Detailed mathematical explanation. MUST DOUBLE ESCAPE BACKSLASHES for any latex. YOU MUST wrap all inline math inside single $ delimiters (e.g., $O(n^2)$)."),
 });
 
 const trueFalseQuestionSchema = z.object({
   type: z.literal("trueFalse"),
   latex: z.string().describe("The mathematical statement IN LATEX. YOU MUST DOUBLE ESCAPE BACKSLASHES (e.g., \\\\frac, \\\\log, \\\\sqrt, \\\\Theta)."),
   isCorrect: z.boolean(),
-  explanation: z.string().describe("Detailed mathematical explanation. MUST DOUBLE ESCAPE BACKSLASHES for any latex (e.g., \\\\frac, \\\\Theta)."),
+  explanation: z.string().describe("Detailed mathematical explanation. MUST DOUBLE ESCAPE BACKSLASHES for any latex. YOU MUST wrap all inline math inside single $ delimiters (e.g., $\\\\Theta(n^2)$)."),
 });
 
 const algorithmBatchSchema = z.object({

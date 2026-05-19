@@ -18,14 +18,14 @@ interface ExplanationTextProps {
  * Non-LaTeX segments are rendered as plain text spans.
  */
 const ExplanationText = memo(function ExplanationText({ text }: ExplanationTextProps) {
-  // Match \( ... \) patterns for inline LaTeX
-  const parts = text.split(/(\\\(.*?\\\))/g);
+// Match $ ... $ patterns for inline LaTeX
+  const parts = text.split(/(\$.*?\$)/g);
 
   return (
     <span>
       {parts.map((part, i) => {
         // Check if this part is a LaTeX expression
-        const match = part.match(/^\\\((.*?)\\\)$/);
+        const match = part.match(/^\$(.*?)\$$/);
         if (match) {
           return <MathExpression key={i} math={match[1]} />;
         }
