@@ -1,0 +1,13 @@
+.math-expression {
+  font-size: inherit;
+}
+
+.math-block {
+  display: block;
+  text-align: center;
+  margin: 0.5rem 0;
+}
+
+.math-inline {
+  display: inline;
+}
