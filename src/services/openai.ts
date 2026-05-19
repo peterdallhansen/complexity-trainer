@@ -12,6 +12,7 @@ import { z } from "zod";
 import { ChatOpenAI } from "@langchain/openai";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import type { AlgorithmQuestion, TrueFalseQuestion, Question } from "../types/questions";
+import { COMPLEXITY_OPTIONS } from "../types/questions";
 
 /** Azure OpenAI configuration loaded from environment variables. */
 const AZURE_CONFIG = {
@@ -132,7 +133,7 @@ const algorithmQuestionSchema = z.object({
   name: z.string(),
   parameter: z.string(),
   pseudocode: z.array(z.string()),
-  correctAnswer: z.string(),
+  correctAnswer: z.enum(COMPLEXITY_OPTIONS),
   explanation: z.string(),
 });
 

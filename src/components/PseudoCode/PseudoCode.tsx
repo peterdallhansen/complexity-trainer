@@ -6,6 +6,7 @@
  */
 
 import { memo } from "react";
+import type { ReactNode } from "react";
 import "./PseudoCode.css";
 
 interface PseudoCodeProps {
@@ -32,8 +33,8 @@ const KEYWORDS = [
  * Highlight keywords in a line of pseudocode.
  * Wraps recognized keywords in <span> elements for CSS styling.
  */
-function highlightLine(line: string): JSX.Element[] {
-  const parts: JSX.Element[] = [];
+function highlightLine(line: string): ReactNode[] {
+  const parts: ReactNode[] = [];
   // Split on word boundaries to isolate keywords
   const tokens = line.split(/(\b\w+\b)/g);
 
